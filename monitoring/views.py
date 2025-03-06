@@ -4,7 +4,9 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from .utils import get_network_info, get_process_info, get_system_metrics
 from .models import NetworkMetrics, ProcessInfo, SystemMetrics
+from django.contrib.auth.decorators import login_required
 
+@login_required
 def test_metrics(request):
     # Obtener métricas actuales
     metrics = get_system_metrics()
@@ -21,6 +23,7 @@ def test_metrics(request):
     # Renderizar con template
     return render(request, 'monitoring/test.html', {'metrics': metrics})
 
+@login_required
 def network_metrics(request):
     network_info = get_network_info()
     
@@ -35,6 +38,7 @@ def network_metrics(request):
     
     return render(request, 'monitoring/network.html', {'network_info': network_info})
 
+@login_required
 def process_list(request):
     processes = get_process_info()
     # guardar en la base de datos
@@ -42,6 +46,9 @@ def process_list(request):
     return render(request, 'monitoring/processes.html', {'processes': processes})
 
 # monitoring/views.py
+
+@login_required
+
 def dashboard(request):
     """Vista para el panel de control principal"""
     metrics = get_system_metrics()
@@ -79,6 +86,7 @@ def dashboard(request):
 # monitoring/views.py
 from django.http import JsonResponse
 from django.conf import settings
+@login_required
 
 def get_realtime_data(request):
     """Endpoint para obtener datos actualizados en tiempo real con umbrales"""
@@ -110,6 +118,7 @@ def get_realtime_data(request):
     })
 
 # monitoring/views.py
+@login_required
 def get_processes_data(request):
     """Endpoint para obtener datos actualizados de procesos"""
     processes = get_process_info()  # Reutiliza tu función existente

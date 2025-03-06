@@ -1,0 +1,27 @@
+{% extends 'monitoring/base.html' %}
+
+{% block title %}Perfil de Usuario{% endblock %}
+
+{% block header %}Perfil de {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="profile-info">
+                <h2>{{ user.username }}</h2>
+                <p>{{ user.email }}</p>
+                <p>Rol: {{ user.profile.get_role_display }}</p>
+            </div>
+        </div>
+        
+        <div class="profile-actions">
+            <a href="{% url 'dashboard' %}" class="btn btn-primary">Ir al Dashboard</a>
+            <a href="{% url 'logout' %}" class="btn btn-danger">Cerrar Sesión</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

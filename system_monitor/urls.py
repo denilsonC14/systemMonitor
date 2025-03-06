@@ -16,9 +16,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.shortcuts import redirect
+def redirect_to_monitoring(request):
+    return redirect('monitoring/')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('monitoring/', include('monitoring.urls')),
+    path('users/', include('users.urls')),
+    path('', redirect_to_monitoring, name='root_redirect'),
     
 ]

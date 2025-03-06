@@ -144,3 +144,6 @@ MONITORING_THRESHOLDS = {
     'memory_critical': 85,  # Porcentaje de memoria para alerta crítica
 }
 
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'dashboard'
+LOGOUT_REDIRECT_URL = 'login'
