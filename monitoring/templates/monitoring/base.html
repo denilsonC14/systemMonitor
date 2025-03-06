@@ -43,6 +43,30 @@
             color: white;
             border-radius: 5px;
         }
+        .alert-warning {
+            background-color: #fff3cd !important;
+            border-color: #ffeeba !important;
+        }
+        
+        .alert-critical {
+            background-color: #f8d7da !important;
+            border-color: #f5c6cb !important;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+        
+        .progress-bar.alert-warning {
+            background-color: #ffc107 !important;
+        }
+        
+        .progress-bar.alert-critical {
+            background-color: #dc3545 !important;
+        }
         /* Otros estilos comunes */
         {% block extra_style %}{% endblock %}
     </style>
@@ -63,7 +87,30 @@
             <a href="{% url 'process_list' %}">Lista de Procesos</a>
         </div>
     </div>
+    <footer style="text-align: center; margin-top: 20px;">
+        <p>&copy; 2021 - Sistema de Monitoreo</p>
+    </footer>
+    {% block scripts %}
+    <script>
+        // Función para actualizar datos en tiempo real
+        function updateRealtimeData() {
+            fetch('/monitoring/api/realtime-data/')
+                .then(response => response.json())
+                .then(data => {
+                    // Este evento será escuchado por cada página
+                    document.dispatchEvent(new CustomEvent('realtimeDataUpdate', { detail: data }));
+                })
+                .catch(error => console.error('Error fetching realtime data:', error));
+        }
+
+        // Actualizar cada 5 segundos
+        setInterval(updateRealtimeData, 5000);
+        
+        // Actualizar inmediatamente al cargar la página
+        document.addEventListener('DOMContentLoaded', updateRealtimeData);
+    </script>
+    {% endblock %}
     
-    {% block scripts %}{% endblock %}
+    {% block page_scripts %}{% endblock %}
 </body>
 </html>

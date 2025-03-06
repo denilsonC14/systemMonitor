@@ -4,6 +4,10 @@
 
 {% block header %}Estado del Sistema - CPU y Memoria{% endblock %}
 
+{% block extra_head %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+{% endblock %}
+
 {% block extra_style %}
 .metric-container {
     margin-bottom: 20px;
@@ -37,6 +41,13 @@
 }
 .memory-bar {
     background-color: #2ecc71;
+}
+.last-updated {
+    text-align: right;
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+    margin-top: 10px;
 }
 {% endblock %}
 
@@ -82,4 +93,88 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+    document.addEventListener('realtimeDataUpdate', function(event) {
+        const data = event.detail;
+        
+        // Actualizar CPU con alertas
+        const cpuBar = document.querySelector('.cpu-bar');
+        const cpuContainer = cpuBar.closest('.metric-container');
+        
+        cpuBar.style.width = data.metrics.cpu_usage + '%';
+        cpuBar.nextElementSibling.textContent = data.metrics.cpu_usage + '%';
+        
+        // Quitar clases de alerta anteriores
+        cpuBar.classList.remove('alert-warning', 'alert-critical');
+        cpuContainer.classList.remove('alert-warning', 'alert-critical');
+        
+        // Añadir clases según el estado
+        if (data.status.cpu === 'warning') {
+            cpuBar.classList.add('alert-warning');
+            cpuContainer.classList.add('alert-warning');
+        } else if (data.status.cpu === 'critical') {
+            cpuBar.classList.add('alert-critical');
+            cpuContainer.classList.add('alert-critical');
+        }
+        
+        // Actualizar Memoria con alertas (similar a CPU)
+        const memoryBar = document.querySelector('.memory-bar');
+        const memoryContainer = memoryBar.closest('.metric-container');
+        
+        // Código similar para memoria...
+        
+        // Actualizar timestamp
+        updateLastUpdated(data.timestamp);
+    });
+    document.addEventListener('realtimeDataUpdate', function(event) {
+        const data = event.detail;
+        
+        // Actualizar CPU
+        const cpuBar = document.querySelector('.cpu-bar');
+        const cpuValue = cpuBar.nextElementSibling;
+        cpuBar.style.width = data.metrics.cpu_usage + '%';
+        cpuValue.textContent = data.metrics.cpu_usage + '%';
+        
+        // Actualizar Memoria
+        const memoryBar = document.querySelector('.memory-bar');
+        const memoryValue = memoryBar.parentElement.nextElementSibling;
+        const memoryPercent = (data.metrics.memory_used / data.metrics.memory_total * 100).toFixed(0);
+        memoryBar.style.width = memoryPercent + '%';
+        memoryValue.textContent = formatBytes(data.metrics.memory_used) + 
+            ' (' + memoryPercent + '%)';
+        
+        // Actualizar memoria libre (usando jQuery para el selector :contains)
+        const memoryFree = $(".metric-label:contains('Memoria Libre')").next();
+        const memoryFreePercent = (data.metrics.memory_free / data.metrics.memory_total * 100).toFixed(0);
+        memoryFree.text(formatBytes(data.metrics.memory_free) + 
+            ' (' + memoryFreePercent + '%)');
+        
+        // Añadir indicador de última actualización
+        updateLastUpdated(data.timestamp);
+    });
+    
+    // Función para formatear bytes
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Función para actualizar timestamp
+    function updateLastUpdated(timestamp) {
+        let lastUpdatedElement = document.getElementById('last-updated');
+        if (!lastUpdatedElement) {
+            lastUpdatedElement = document.createElement('div');
+            lastUpdatedElement.id = 'last-updated';
+            lastUpdatedElement.className = 'last-updated';
+            document.querySelector('.card').appendChild(lastUpdatedElement);
+        }
+        lastUpdatedElement.textContent = 'Última actualización: ' + timestamp;
+    }
+</script>
 {% endblock %}

@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'monitoring',
     'django_plotly_dash.apps.DjangoPlotlyDashConfig',
+    'users',
 ]
 # Configuración para django-plotly-dash
 X_FRAME_OPTIONS = 'SAMEORIGIN'

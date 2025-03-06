@@ -1,182 +1,249 @@
 {% extends 'monitoring/base.html' %}
 
-{% block title %}Dashboard de Monitoreo{% endblock %}
+{% block title %}Panel de Control del Sistema{% endblock %}
 
-{% block header %}Dashboard de Monitoreo del Sistema{% endblock %}
+{% block header %}Panel de Control - Monitoreo en Tiempo Real{% endblock %}
 
 {% block extra_style %}
-.row {
-    display: flex;
-    flex-wrap: wrap;
-    margin: -10px;
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
 }
-.col {
-    flex: 1;
-    padding: 10px;
-    min-width: 300px;
+
+.dashboard-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 15px;
 }
-.metric {
+
+.dashboard-card h3 {
+    margin-top: 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.metric-display {
     display: flex;
     align-items: center;
     margin-bottom: 10px;
 }
+
 .metric-label {
     font-weight: bold;
-    width: 150px;
+    width: 120px;
 }
+
 .metric-value {
     flex: 1;
 }
+
 .progress {
-    height: 20px;
+    height: 15px;
     background-color: #ecf0f1;
     border-radius: 10px;
     overflow: hidden;
+    margin-bottom: 5px;
 }
+
 .progress-bar {
     height: 100%;
-    background-color: #3498db;
     border-radius: 10px;
 }
-table {
+
+.cpu-bar { background-color: #e74c3c; }
+.memory-bar { background-color: #2ecc71; }
+
+.process-mini-table {
     width: 100%;
     border-collapse: collapse;
 }
-th, td {
-    padding: 10px;
+
+.process-mini-table th, .process-mini-table td {
+    padding: 8px;
     text-align: left;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #eee;
 }
-th {
-    background-color: #f2f2f2;
+
+.last-updated {
+    text-align: right;
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+    margin-top: 10px;
 }
+
+.alert-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+.alert-normal { background-color: #d4edda; color: #155724; }
+.alert-warning { background-color: #fff3cd; color: #856404; }
+.alert-critical { background-color: #f8d7da; color: #721c24; }
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col">
-        <div class="card">
-            <h2>CPU y Memoria</h2>
-            
-            <div class="metric">
-                <div class="metric-label">Uso de CPU:</div>
-                <div class="metric-value">
-                    <div class="progress">
-                        <div class="progress-bar" style="width: {{ system_metrics.cpu_usage }}%"></div>
-                    </div>
-                    <div>{{ system_metrics.cpu_usage }}%</div>
+<div class="dashboard-grid">
+    <!-- CPU Card -->
+    <div class="dashboard-card" id="cpu-card">
+        <h3>
+            CPU 
+            <span class="alert-badge alert-{{ status.cpu }}">
+                {{ status.cpu|upper }}
+            </span>
+        </h3>
+        <div class="metric-display">
+            <div class="metric-label">Uso:</div>
+            <div class="metric-value">
+                <div class="progress">
+                    <div class="progress-bar cpu-bar" style="width: {{ metrics.cpu_usage }}%"></div>
                 </div>
+                <div>{{ metrics.cpu_usage }}%</div>
             </div>
-            
-            <div class="metric">
-                <div class="metric-label">Memoria Usada:</div>
-                <div class="metric-value">
-                    <div class="progress">
-                        {% with memory_percent=system_metrics.memory_used|floatformat:0 %}
-                        <div class="progress-bar" style="width: {{ memory_percent }}%"></div>
-                        {% endwith %}
-                    </div>
-                    <div>{{ system_metrics.memory_used|filesizeformat }} / {{ system_metrics.memory_total|filesizeformat }}</div>
-                </div>
-            </div>
-            
-            <div id="cpu-chart" style="width:100%; height:300px;"></div>
         </div>
     </div>
     
-    <div class="col">
-        <div class="card">
-            <h2>Información de Red</h2>
-            
-            <div class="metric">
-                <div class="metric-label">Bytes enviados:</div>
-                <div class="metric-value">{{ network_info.bytes_sent|filesizeformat }}</div>
-            </div>
-            
-            <div class="metric">
-                <div class="metric-label">Bytes recibidos:</div>
-                <div class="metric-value">{{ network_info.bytes_recv|filesizeformat }}</div>
-            </div>
-            
-            <div class="metric">
-                <div class="metric-label">Paquetes enviados:</div>
-                <div class="metric-value">{{ network_info.packets_sent }}</div>
-            </div>
-            
-            <div class="metric">
-                <div class="metric-label">Paquetes recibidos:</div>
-                <div class="metric-value">{{ network_info.packets_recv }}</div>
+    <!-- Memory Card -->
+    <div class="dashboard-card" id="memory-card">
+        <h3>
+            Memoria
+            <span class="alert-badge alert-{{ status.memory }}">
+                {{ status.memory|upper }}
+            </span>
+        </h3>
+        <div class="metric-display">
+            <div class="metric-label">Uso:</div>
+            <div class="metric-value">
+                <div class="progress">
+                    <div class="progress-bar memory-bar" style="width: {% widthratio metrics.memory_used metrics.memory_total 100 %}%"></div>
+                </div>
+                <div>{{ metrics.memory_used|filesizeformat }} / {{ metrics.memory_total|filesizeformat }}</div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="card">
-    <h2>Top Procesos</h2>
-    <table>
-        <tr>
-            <th>PID</th>
-            <th>Nombre</th>
-            <th>CPU (%)</th>
-            <th>Memoria (%)</th>
-        </tr>
-        {% for process in top_processes %}
-        <tr>
-            <td>{{ process.pid }}</td>
-            <td>{{ process.name }}</td>
-            <td>{{ process.cpu_percent }}</td>
-            <td>{{ process.memory_percent|floatformat:2 }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+<div class="dashboard-grid">
+    <!-- Network Card -->
+    <div class="dashboard-card">
+        <h3>Red</h3>
+        <div class="metric-display">
+            <div class="metric-label">Enviados:</div>
+            <div class="metric-value" id="bytes-sent">{{ network_info.bytes_sent|filesizeformat }}</div>
+        </div>
+        <div class="metric-display">
+            <div class="metric-label">Recibidos:</div>
+            <div class="metric-value" id="bytes-recv">{{ network_info.bytes_recv|filesizeformat }}</div>
+        </div>
+    </div>
+    
+    <!-- Top Processes Card -->
+    <div class="dashboard-card">
+        <h3>Procesos Principales</h3>
+        <table class="process-mini-table">
+            <thead>
+                <tr>
+                    <th>PID</th>
+                    <th>Nombre</th>
+                    <th>CPU (%)</th>
+                    <th>MEM (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for process in top_processes %}
+                <tr>
+                    <td>{{ process.pid }}</td>
+                    <td>{{ process.name }}</td>
+                    <td>{{ process.cpu_percent|floatformat:1 }}%</td>
+                    <td>{{ process.memory_percent|floatformat:2 }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="last-updated" class="last-updated">
+    Última actualización: {{ now|time:"H:i:s" }}
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block page_scripts %}
 <script>
-    // Datos para el gráfico de CPU
-    var cpuData = {{ cpu_history|safe }};
-    
-    // Preparar los datos para Plotly
-    var timestamps = cpuData.map(function(item) {
-        return new Date(item.timestamp);
+    document.addEventListener('realtimeDataUpdate', function(event) {
+        const data = event.detail;
+        
+        // Actualizar CPU con alertas
+        const cpuBar = document.querySelector('.cpu-bar');
+        const cpuValue = cpuBar.nextElementSibling;
+        cpuBar.style.width = data.metrics.cpu_usage + '%';
+        cpuValue.textContent = data.metrics.cpu_usage + '%';
+        
+        // Actualizar estado de alerta CPU
+        const cpuCard = document.getElementById('cpu-card');
+        const cpuBadge = cpuCard.querySelector('.alert-badge');
+        cpuBadge.className = 'alert-badge alert-' + data.status.cpu;
+        cpuBadge.textContent = data.status.cpu.toUpperCase();
+        
+        // Actualizar Memoria
+        const memoryBar = document.querySelector('.memory-bar');
+        const memoryValue = memoryBar.nextElementSibling;
+        const memoryPercent = (data.metrics.memory_used / data.metrics.memory_total * 100).toFixed(0);
+        memoryBar.style.width = memoryPercent + '%';
+        memoryValue.textContent = formatBytes(data.metrics.memory_used) + ' / ' + 
+            formatBytes(data.metrics.memory_total);
+        
+        // Actualizar estado de alerta Memoria
+        const memoryCard = document.getElementById('memory-card');
+        const memoryBadge = memoryCard.querySelector('.alert-badge');
+        memoryBadge.className = 'alert-badge alert-' + data.status.memory;
+        memoryBadge.textContent = data.status.memory.toUpperCase();
+        
+        // Actualizar Red
+        document.getElementById('bytes-sent').textContent = formatBytes(data.network_info.bytes_sent);
+        document.getElementById('bytes-recv').textContent = formatBytes(data.network_info.bytes_recv);
+        
+        // Actualizar timestamp
+        document.getElementById('last-updated').textContent = 'Última actualización: ' + data.timestamp;
     });
     
-    var cpuValues = cpuData.map(function(item) {
-        return item.cpu_usage;
-    });
+    // Actualizar procesos cada 10 segundos
+    setInterval(function() {
+        fetch('/monitoring/api/processes-data/')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.querySelector('.process-mini-table tbody');
+                tableBody.innerHTML = '';
+                
+                // Mostrar solo los 5 procesos que más CPU consumen
+                data.processes.slice(0, 5).forEach(process => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${process.pid}</td>
+                        <td>${process.name}</td>
+                        <td>${process.cpu_percent.toFixed(1)}%</td>
+                        <td>${process.memory_percent.toFixed(2)}%</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            })
+            .catch(error => console.error('Error fetching processes data:', error));
+    }, 10000);
     
-    // Crear el gráfico de CPU
-    var trace = {
-        x: timestamps,
-        y: cpuValues,
-        type: 'scatter',
-        mode: 'lines',
-        name: 'Uso de CPU',
-        line: {
-            color: '#3498db',
-            width: 2
-        }
-    };
-    
-    var layout = {
-        title: 'Historial de Uso de CPU',
-        xaxis: {
-            title: 'Tiempo'
-        },
-        yaxis: {
-            title: 'Uso de CPU (%)',
-            range: [0, 100]
-        },
-        margin: {
-            l: 50,
-            r: 50,
-            b: 50,
-            t: 50,
-            pad: 4
-        }
-    };
-    
-    Plotly.newPlot('cpu-chart', [trace], layout);
+    // Función para formatear bytes
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
 </script>
 {% endblock %}

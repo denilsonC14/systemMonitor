@@ -147,3 +147,61 @@
     });
 </script>
 {% endblock %}
+{% block page_scripts %}
+<script>
+    // Actualizar datos de procesos específicamente
+    function updateProcessesData() {
+        fetch('/monitoring/api/processes-data/')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.querySelector('.process-table tbody');
+                tableBody.innerHTML = '';
+                
+                data.processes.forEach(process => {
+                    const row = document.createElement('tr');
+                    row.className = `process-row ${process.cpu_percent > 5 ? 'high-cpu' : process.cpu_percent > 1 ? 'medium-cpu' : 'low-cpu'}`;
+                    
+                    row.innerHTML = `
+                        <td>${process.pid}</td>
+                        <td>${process.name}</td>
+                        <td class="${process.cpu_percent > 5 ? 'high-usage' : process.cpu_percent > 1 ? 'medium-usage' : 'low-usage'}">
+                            ${process.cpu_percent.toFixed(1)}%
+                        </td>
+                        <td>${process.memory_percent.toFixed(2)}%</td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+                
+                // Actualizar el filtro activo
+                const activeFilter = document.querySelector('.filters button.active');
+                if (activeFilter) {
+                    activeFilter.click();
+                }
+                
+                // Añadir indicador de última actualización
+                updateLastUpdated(data.timestamp);
+            })
+            .catch(error => console.error('Error fetching processes data:', error));
+    }
+    
+    // Actualizar cada 10 segundos (los procesos cambian más rápido)
+    setInterval(updateProcessesData, 10000);
+    
+    // Actualizar inmediatamente al cargar la página
+    document.addEventListener('DOMContentLoaded', updateProcessesData);
+    
+    // Función para actualizar timestamp
+    function updateLastUpdated(timestamp) {
+        let lastUpdatedElement = document.getElementById('last-updated');
+        if (!lastUpdatedElement) {
+            lastUpdatedElement = document.createElement('div');
+            lastUpdatedElement.id = 'last-updated';
+            lastUpdatedElement.className = 'last-updated';
+            document.querySelector('.card').appendChild(lastUpdatedElement);
+        }
+        lastUpdatedElement.textContent = 'Última actualización: ' + timestamp;
+    }
+</script>
+{% endblock %}
+

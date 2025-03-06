@@ -1,3 +1,5 @@
+
+from django.utils import timezone
 from django.http import JsonResponse
 from django.shortcuts import render
 from .utils import get_network_info, get_process_info, get_system_metrics
@@ -39,20 +41,80 @@ def process_list(request):
     
     return render(request, 'monitoring/processes.html', {'processes': processes})
 
+# monitoring/views.py
 def dashboard(request):
-    # Obtener los datos más recientes
-    system_metrics = get_system_metrics()
+    """Vista para el panel de control principal"""
+    metrics = get_system_metrics()
     network_info = get_network_info()
-    processes = get_process_info()
+    processes = get_process_info()[:5]  # Solo los 5 procesos más intensivos
     
-    # Obtener datos históricos para los gráficos
-    cpu_history = SystemMetrics.objects.order_by('-timestamp')[:60]  # Últimas 60 entradas
+    # Calcular estado de alertas
+    cpu_status = 'normal'
+    if metrics['cpu_usage'] >= settings.MONITORING_THRESHOLDS['cpu_critical']:
+        cpu_status = 'critical'
+    elif metrics['cpu_usage'] >= settings.MONITORING_THRESHOLDS['cpu_warning']:
+        cpu_status = 'warning'
+    
+    memory_percent = (metrics['memory_used'] / metrics['memory_total']) * 100
+    memory_status = 'normal'
+    if memory_percent >= settings.MONITORING_THRESHOLDS['memory_critical']:
+        memory_status = 'critical'
+    elif memory_percent >= settings.MONITORING_THRESHOLDS['memory_warning']:
+        memory_status = 'warning'
     
     context = {
-        'system_metrics': system_metrics,
+        'metrics': metrics,
         'network_info': network_info,
-        'top_processes': processes[:5],  # Solo los 5 procesos principales
-        'cpu_history': list(cpu_history.values('timestamp', 'cpu_usage')),
+        'top_processes': processes,
+        'status': {
+            'cpu': cpu_status,
+            'memory': memory_status
+        }
     }
     
     return render(request, 'monitoring/dashboard.html', context)
+
+
+
+# monitoring/views.py
+from django.http import JsonResponse
+from django.conf import settings
+
+def get_realtime_data(request):
+    """Endpoint para obtener datos actualizados en tiempo real con umbrales"""
+    metrics = get_system_metrics()
+    network_info = get_network_info()
+    
+    # Añadir estado de alerta basado en umbrales
+    cpu_status = 'normal'
+    if metrics['cpu_usage'] >= settings.MONITORING_THRESHOLDS['cpu_critical']:
+        cpu_status = 'critical'
+    elif metrics['cpu_usage'] >= settings.MONITORING_THRESHOLDS['cpu_warning']:
+        cpu_status = 'warning'
+    
+    memory_percent = (metrics['memory_used'] / metrics['memory_total']) * 100
+    memory_status = 'normal'
+    if memory_percent >= settings.MONITORING_THRESHOLDS['memory_critical']:
+        memory_status = 'critical'
+    elif memory_percent >= settings.MONITORING_THRESHOLDS['memory_warning']:
+        memory_status = 'warning'
+    
+    return JsonResponse({
+        'metrics': metrics,
+        'network_info': network_info,
+        'status': {
+            'cpu': cpu_status,
+            'memory': memory_status
+        },
+        'timestamp': timezone.now().strftime('%H:%M:%S')
+    })
+
+# monitoring/views.py
+def get_processes_data(request):
+    """Endpoint para obtener datos actualizados de procesos"""
+    processes = get_process_info()  # Reutiliza tu función existente
+    
+    return JsonResponse({
+        'processes': processes,
+        'timestamp': timezone.now().strftime('%H:%M:%S')
+    })
