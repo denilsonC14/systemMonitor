@@ -1,0 +1,149 @@
+{% extends 'monitoring/base.html' %}
+
+{% block title %}Lista de Procesos{% endblock %}
+
+{% block header %}Procesos Activos del Sistema{% endblock %}
+
+{% block extra_style %}
+.process-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.process-table th, .process-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+.process-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    color: #2c3e50;
+}
+.process-table tr:hover {
+    background-color: #f5f5f5;
+}
+.process-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+.high-usage {
+    color: #e74c3c;
+    font-weight: bold;
+}
+.medium-usage {
+    color: #f39c12;
+}
+.low-usage {
+    color: #2ecc71;
+}
+.filters {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+.filters button {
+    padding: 8px 15px;
+    background-color: #f2f2f2;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.filters button.active {
+    background-color: #3498db;
+    color: white;
+}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Procesos Activos</h2>
+    <p>Lista de los procesos actualmente en ejecución en el sistema, ordenados por uso de CPU.</p>
+    
+    <div class="filters">
+        <button id="filter-all" class="active">Todos</button>
+        <button id="filter-high">Alto uso de CPU (>5%)</button>
+        <button id="filter-medium">Uso medio de CPU (1-5%)</button>
+        <button id="filter-low">Bajo uso de CPU (<1%)</button>
+    </div>
+    
+    <table class="process-table">
+        <thead>
+            <tr>
+                <th>PID</th>
+                <th>Nombre</th>
+                <th>CPU (%)</th>
+                <th>Memoria (%)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for process in processes %}
+            <tr class="process-row {% if process.cpu_percent > 5 %}high-cpu{% elif process.cpu_percent > 1 %}medium-cpu{% else %}low-cpu{% endif %}">
+                <td>{{ process.pid }}</td>
+                <td>{{ process.name }}</td>
+                <td class="{% if process.cpu_percent > 5 %}high-usage{% elif process.cpu_percent > 1 %}medium-usage{% else %}low-usage{% endif %}">
+                    {{ process.cpu_percent|floatformat:1 }}%
+                </td>
+                <td>{{ process.memory_percent|floatformat:2 }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Filtrado de procesos por uso de CPU
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterAll = document.getElementById('filter-all');
+        const filterHigh = document.getElementById('filter-high');
+        const filterMedium = document.getElementById('filter-medium');
+        const filterLow = document.getElementById('filter-low');
+        const rows = document.querySelectorAll('.process-row');
+        
+        filterAll.addEventListener('click', function() {
+            setActiveFilter(this);
+            rows.forEach(row => row.style.display = '');
+        });
+        
+        filterHigh.addEventListener('click', function() {
+            setActiveFilter(this);
+            rows.forEach(row => {
+                if (row.classList.contains('high-cpu')) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        
+        filterMedium.addEventListener('click', function() {
+            setActiveFilter(this);
+            rows.forEach(row => {
+                if (row.classList.contains('medium-cpu')) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        
+        filterLow.addEventListener('click', function() {
+            setActiveFilter(this);
+            rows.forEach(row => {
+                if (row.classList.contains('low-cpu')) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        
+        function setActiveFilter(button) {
+            document.querySelectorAll('.filters button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            button.classList.add('active');
+        }
+    });
+</script>
+{% endblock %}

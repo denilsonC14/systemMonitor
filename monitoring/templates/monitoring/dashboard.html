@@ -1,0 +1,182 @@
+{% extends 'monitoring/base.html' %}
+
+{% block title %}Dashboard de Monitoreo{% endblock %}
+
+{% block header %}Dashboard de Monitoreo del Sistema{% endblock %}
+
+{% block extra_style %}
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: -10px;
+}
+.col {
+    flex: 1;
+    padding: 10px;
+    min-width: 300px;
+}
+.metric {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.metric-label {
+    font-weight: bold;
+    width: 150px;
+}
+.metric-value {
+    flex: 1;
+}
+.progress {
+    height: 20px;
+    background-color: #ecf0f1;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.progress-bar {
+    height: 100%;
+    background-color: #3498db;
+    border-radius: 10px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+th {
+    background-color: #f2f2f2;
+}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col">
+        <div class="card">
+            <h2>CPU y Memoria</h2>
+            
+            <div class="metric">
+                <div class="metric-label">Uso de CPU:</div>
+                <div class="metric-value">
+                    <div class="progress">
+                        <div class="progress-bar" style="width: {{ system_metrics.cpu_usage }}%"></div>
+                    </div>
+                    <div>{{ system_metrics.cpu_usage }}%</div>
+                </div>
+            </div>
+            
+            <div class="metric">
+                <div class="metric-label">Memoria Usada:</div>
+                <div class="metric-value">
+                    <div class="progress">
+                        {% with memory_percent=system_metrics.memory_used|floatformat:0 %}
+                        <div class="progress-bar" style="width: {{ memory_percent }}%"></div>
+                        {% endwith %}
+                    </div>
+                    <div>{{ system_metrics.memory_used|filesizeformat }} / {{ system_metrics.memory_total|filesizeformat }}</div>
+                </div>
+            </div>
+            
+            <div id="cpu-chart" style="width:100%; height:300px;"></div>
+        </div>
+    </div>
+    
+    <div class="col">
+        <div class="card">
+            <h2>Información de Red</h2>
+            
+            <div class="metric">
+                <div class="metric-label">Bytes enviados:</div>
+                <div class="metric-value">{{ network_info.bytes_sent|filesizeformat }}</div>
+            </div>
+            
+            <div class="metric">
+                <div class="metric-label">Bytes recibidos:</div>
+                <div class="metric-value">{{ network_info.bytes_recv|filesizeformat }}</div>
+            </div>
+            
+            <div class="metric">
+                <div class="metric-label">Paquetes enviados:</div>
+                <div class="metric-value">{{ network_info.packets_sent }}</div>
+            </div>
+            
+            <div class="metric">
+                <div class="metric-label">Paquetes recibidos:</div>
+                <div class="metric-value">{{ network_info.packets_recv }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Top Procesos</h2>
+    <table>
+        <tr>
+            <th>PID</th>
+            <th>Nombre</th>
+            <th>CPU (%)</th>
+            <th>Memoria (%)</th>
+        </tr>
+        {% for process in top_processes %}
+        <tr>
+            <td>{{ process.pid }}</td>
+            <td>{{ process.name }}</td>
+            <td>{{ process.cpu_percent }}</td>
+            <td>{{ process.memory_percent|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Datos para el gráfico de CPU
+    var cpuData = {{ cpu_history|safe }};
+    
+    // Preparar los datos para Plotly
+    var timestamps = cpuData.map(function(item) {
+        return new Date(item.timestamp);
+    });
+    
+    var cpuValues = cpuData.map(function(item) {
+        return item.cpu_usage;
+    });
+    
+    // Crear el gráfico de CPU
+    var trace = {
+        x: timestamps,
+        y: cpuValues,
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Uso de CPU',
+        line: {
+            color: '#3498db',
+            width: 2
+        }
+    };
+    
+    var layout = {
+        title: 'Historial de Uso de CPU',
+        xaxis: {
+            title: 'Tiempo'
+        },
+        yaxis: {
+            title: 'Uso de CPU (%)',
+            range: [0, 100]
+        },
+        margin: {
+            l: 50,
+            r: 50,
+            b: 50,
+            t: 50,
+            pad: 4
+        }
+    };
+    
+    Plotly.newPlot('cpu-chart', [trace], layout);
+</script>
+{% endblock %}

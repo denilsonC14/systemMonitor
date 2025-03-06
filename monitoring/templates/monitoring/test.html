@@ -1,0 +1,85 @@
+{% extends 'monitoring/base.html' %}
+
+{% block title %}Métricas Básicas del Sistema{% endblock %}
+
+{% block header %}Estado del Sistema - CPU y Memoria{% endblock %}
+
+{% block extra_style %}
+.metric-container {
+    margin-bottom: 20px;
+}
+.metric {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+.metric-label {
+    font-weight: bold;
+    width: 150px;
+}
+.metric-value {
+    flex: 1;
+}
+.progress {
+    height: 20px;
+    background-color: #ecf0f1;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+.progress-bar {
+    height: 100%;
+    background-color: #3498db;
+    border-radius: 10px;
+}
+.cpu-bar {
+    background-color: #e74c3c;
+}
+.memory-bar {
+    background-color: #2ecc71;
+}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Información de CPU</h2>
+    <div class="metric-container">
+        <div class="metric">
+            <div class="metric-label">Uso de CPU:</div>
+            <div class="metric-value">
+                <div class="progress">
+                    <div class="progress-bar cpu-bar" style="width: {{ metrics.cpu_usage }}%"></div>
+                </div>
+                <div>{{ metrics.cpu_usage }}%</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Información de Memoria</h2>
+    <div class="metric-container">
+        <div class="metric">
+            <div class="metric-label">Memoria Total:</div>
+            <div class="metric-value">{{ metrics.memory_total|filesizeformat }}</div>
+        </div>
+        
+        <div class="metric">
+            <div class="metric-label">Memoria Usada:</div>
+            <div class="metric-value">
+                <div class="progress">
+                    {% with memory_percent=metrics.memory_used|floatformat:0 %}
+                    <div class="progress-bar memory-bar" style="width: {{ memory_percent }}%"></div>
+                    {% endwith %}
+                </div>
+                <div>{{ metrics.memory_used|filesizeformat }} ({% widthratio metrics.memory_used metrics.memory_total 100 %}%)</div>
+            </div>
+        </div>
+        
+        <div class="metric">
+            <div class="metric-label">Memoria Libre:</div>
+            <div class="metric-value">{{ metrics.memory_free|filesizeformat }} ({% widthratio metrics.memory_free metrics.memory_total 100 %}%)</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

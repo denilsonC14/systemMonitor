@@ -1,0 +1,5 @@
+## ingnorar el entonor de desarrollo
+venv/
+__pycache__/
+*.pyc
+
