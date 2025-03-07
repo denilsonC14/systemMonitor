@@ -6,3 +6,5 @@ pip install django-plotly-dash
 pip install pandas
 pip install dash
 pip install plotly
+pip install psutil py-cpuinfo
+

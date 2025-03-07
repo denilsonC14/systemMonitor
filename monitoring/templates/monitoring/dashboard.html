@@ -87,6 +87,129 @@
 .alert-normal { background-color: #d4edda; color: #155724; }
 .alert-warning { background-color: #fff3cd; color: #856404; }
 .alert-critical { background-color: #f8d7da; color: #721c24; }
+/* Animaciones y transiciones */
+    .dashboard-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .progress-bar {
+        transition: width 0.5s ease-out;
+    }
+    
+    .nav a {
+        transition: background-color 0.3s ease;
+    }
+    
+    .btn {
+        transition: background-color 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        background-color: #2980b9;
+    }
+    
+    .btn-danger:hover {
+        background-color: #c0392b;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .alert {
+        animation: fadeIn 0.5s ease-out;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+    }
+    
+    th {
+        background-color: #f8f9fa;
+        color: #495057;
+        font-weight: 600;
+        text-align: left;
+        padding: 12px;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    tr:hover {
+        background-color: #f1f5f9;
+    }
+    
+    tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .table-container {
+        border-radius: 8px;
+        overflow: hidden;
+        background-color: white;
+    }
+    /* Variables para tema claro/oscuro */
+    :root {
+        --bg-color: #f5f5f5;
+        --card-bg: #ffffff;
+        --text-color: #333333;
+        --border-color: #dee2e6;
+        --header-bg: #3498db;
+        --header-text: #ffffff;
+    }
+    
+    /* Clase para modo oscuro */
+    .dark-mode {
+        --bg-color: #1a1a1a;
+        --card-bg: #2d2d2d;
+        --text-color: #f5f5f5;
+        --border-color: #444444;
+        --header-bg: #2c3e50;
+        --header-text: #ffffff;
+    }
+    
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+    }
+    
+    .dashboard-card, .auth-card, .profile-card {
+        background-color: var(--card-bg);
+    }
+    
+    header {
+        background-color: var(--header-bg);
+        color: var(--header-text);
+    }
+    
+    /* Botón para cambiar tema */
+    .theme-toggle {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: var(--header-bg);
+        color: var(--header-text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        z-index: 1000;
+    }
 {% endblock %}
 
 {% block content %}
@@ -94,7 +217,7 @@
     <!-- CPU Card -->
     <div class="dashboard-card" id="cpu-card">
         <h3>
-            CPU 
+            <i class="fas fa-microchip"></i>CPU 
             <span class="alert-badge alert-{{ status.cpu }}">
                 {{ status.cpu|upper }}
             </span>
@@ -113,7 +236,7 @@
     <!-- Memory Card -->
     <div class="dashboard-card" id="memory-card">
         <h3>
-            Memoria
+            <i class="fas fa-memory"></i>Memoria
             <span class="alert-badge alert-{{ status.memory }}">
                 {{ status.memory|upper }}
             </span>
@@ -133,7 +256,7 @@
 <div class="dashboard-grid">
     <!-- Network Card -->
     <div class="dashboard-card">
-        <h3>Red</h3>
+        <h3><i class="fas fa-network-wired"></i> Red</h3>
         <div class="metric-display">
             <div class="metric-label">Enviados:</div>
             <div class="metric-value" id="bytes-sent">{{ network_info.bytes_sent|filesizeformat }}</div>
@@ -146,7 +269,7 @@
     
     <!-- Top Processes Card -->
     <div class="dashboard-card">
-        <h3>Procesos Principales</h3>
+        <h3><i class="fas fa-tasks"></i> Procesos Principales</h3>
         <table class="process-mini-table">
             <thead>
                 <tr>
@@ -173,10 +296,34 @@
 <div id="last-updated" class="last-updated">
     Última actualización: {{ now|time:"H:i:s" }}
 </div>
+<div class="theme-toggle" id="themeToggle">
+    <i class="fas fa-moon"></i>
+</div>
 {% endblock %}
 
 {% block page_scripts %}
 <script>
+     // Código para cambiar tema
+     document.getElementById('themeToggle').addEventListener('click', function() {
+        document.body.classList.toggle('dark-mode');
+        const icon = this.querySelector('i');
+        if (document.body.classList.contains('dark-mode')) {
+            icon.classList.replace('fa-moon', 'fa-sun');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            icon.classList.replace('fa-sun', 'fa-moon');
+            localStorage.setItem('theme', 'light');
+        }
+    });
+    
+    // Cargar preferencia de tema
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            document.querySelector('#themeToggle i').classList.replace('fa-moon', 'fa-sun');
+        }
+    });
     document.addEventListener('realtimeDataUpdate', function(event) {
         const data = event.detail;
         
