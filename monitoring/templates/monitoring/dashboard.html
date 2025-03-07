@@ -210,6 +210,43 @@
         box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         z-index: 1000;
     }
+    .disk-bar { background-color: #9b59b6; }
+    .temperature-display {
+        display: flex;
+        align-items: center;
+        margin-top: 10px;
+    }
+    .temperature-icon {
+        margin-right: 10px;
+        font-size: 24px;
+    }
+    .temperature-value {
+        font-size: 18px;
+        font-weight: bold;
+    }
+    .cold { color: #3498db; }
+    .normal-temp { color: #2ecc71; }
+    .warm { color: #f39c12; }
+    .hot { color: #e74c3c; }
+    .btn {
+        display: inline-block;
+        padding: 10px 15px;
+        background-color: #3498db;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+    
+    .btn:hover {
+        background-color: #2980b9;
+    }
+    
+    .btn i {
+        margin-right: 5px;
+    }
+    
 {% endblock %}
 
 {% block content %}
@@ -231,6 +268,36 @@
                 <div>{{ metrics.cpu_usage }}%</div>
             </div>
         </div>
+        
+        <!-- Nueva sección para frecuencia de CPU -->
+        {% if metrics.cpu_freq %}
+        <div class="metric-display">
+            <div class="metric-label">Frecuencia:</div>
+            <div class="metric-value">
+                {{ metrics.cpu_freq|floatformat:0 }} MHz
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Nueva sección para temperatura de CPU -->
+        {% if metrics.cpu_temp %}
+        <div class="temperature-display">
+            <div class="temperature-icon">
+                {% if metrics.cpu_temp < 50 %}
+                    <i class="fas fa-thermometer-quarter cold"></i>
+                {% elif metrics.cpu_temp < 70 %}
+                    <i class="fas fa-thermometer-half normal-temp"></i>
+                {% elif metrics.cpu_temp < 85 %}
+                    <i class="fas fa-thermometer-three-quarters warm"></i>
+                {% else %}
+                    <i class="fas fa-thermometer-full hot"></i>
+                {% endif %}
+            </div>
+            <div class="temperature-value">
+                {{ metrics.cpu_temp|floatformat:1 }}°C
+            </div>
+        </div>
+        {% endif %}
     </div>
     
     <!-- Memory Card -->
@@ -250,6 +317,21 @@
                 <div>{{ metrics.memory_used|filesizeformat }} / {{ metrics.memory_total|filesizeformat }}</div>
             </div>
         </div>
+        
+        <!-- Nuevas secciones para buffers y caché -->
+        {% if metrics.memory_buffers %}
+        <div class="metric-display">
+            <div class="metric-label">Buffers:</div>
+            <div class="metric-value">{{ metrics.memory_buffers|filesizeformat }}</div>
+        </div>
+        {% endif %}
+        
+        {% if metrics.memory_cached %}
+        <div class="metric-display">
+            <div class="metric-label">Caché:</div>
+            <div class="metric-value">{{ metrics.memory_cached|filesizeformat }}</div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -265,8 +347,43 @@
             <div class="metric-label">Recibidos:</div>
             <div class="metric-value" id="bytes-recv">{{ network_info.bytes_recv|filesizeformat }}</div>
         </div>
+        
+        <!-- Nuevas secciones para velocidad de red -->
+        <div class="metric-display">
+            <div class="metric-label">Velocidad Subida:</div>
+            <div class="metric-value" id="bytes-sent-speed">{{ network_info.bytes_sent_speed|filesizeformat }}/s</div>
+        </div>
+        <div class="metric-display">
+            <div class="metric-label">Velocidad Bajada:</div>
+            <div class="metric-value" id="bytes-recv-speed">{{ network_info.bytes_recv_speed|filesizeformat }}/s</div>
+        </div>
     </div>
     
+    <!-- Disk Card (Nueva) -->
+    <div class="dashboard-card" id="disk-card">
+        <h3>
+            <i class="fas fa-hdd"></i> Disco
+            <span class="alert-badge alert-{{ status.disk }}">
+                {{ status.disk|upper }}
+            </span>
+        </h3>
+        <div class="metric-display">
+            <div class="metric-label">Uso:</div>
+            <div class="metric-value">
+                <div class="progress">
+                    <div class="progress-bar disk-bar" style="width: {{ metrics.disk_percent }}%"></div>
+                </div>
+                <div>{{ metrics.disk_used|filesizeformat }} / {{ metrics.disk_total|filesizeformat }} ({{ metrics.disk_percent }}%)</div>
+            </div>
+        </div>
+        <div class="metric-display">
+            <div class="metric-label">Espacio Libre:</div>
+            <div class="metric-value">{{ metrics.disk_free|filesizeformat }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
     <!-- Top Processes Card -->
     <div class="dashboard-card">
         <h3><i class="fas fa-tasks"></i> Procesos Principales</h3>
@@ -292,6 +409,11 @@
         </table>
     </div>
 </div>
+<div style="text-align: right; margin-top: 20px;">
+    <a href="{% url 'export_pdf' %}" class="btn btn-primary" target="_blank">
+        <i class="fas fa-file-pdf"></i> Exportar a PDF
+    </a>
+</div>
 
 <div id="last-updated" class="last-updated">
     Última actualización: {{ now|time:"H:i:s" }}
@@ -304,7 +426,7 @@
 {% block page_scripts %}
 <script>
      // Código para cambiar tema
-     document.getElementById('themeToggle').addEventListener('click', function() {
+    document.getElementById('themeToggle').addEventListener('click', function() {
         document.body.classList.toggle('dark-mode');
         const icon = this.querySelector('i');
         if (document.body.classList.contains('dark-mode')) {
@@ -392,5 +514,107 @@
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
+    document.addEventListener('realtimeDataUpdate', function(event) {
+        const data = event.detail;
+        
+        // Actualizar CPU con alertas
+        const cpuBar = document.querySelector('.cpu-bar');
+        const cpuValue = cpuBar.nextElementSibling;
+        cpuBar.style.width = data.metrics.cpu_usage + '%';
+        cpuValue.textContent = data.metrics.cpu_usage + '%';
+        
+        // Actualizar estado de alerta CPU
+        const cpuCard = document.getElementById('cpu-card');
+        const cpuBadge = cpuCard.querySelector('.alert-badge');
+        cpuBadge.className = 'alert-badge alert-' + data.status.cpu;
+        cpuBadge.textContent = data.status.cpu.toUpperCase();
+        
+        // Actualizar frecuencia de CPU si está disponible
+        if (data.metrics.cpu_freq) {
+            const cpuFreqElement = document.querySelector('.metric-label:contains("Frecuencia")').nextElementSibling;
+            if (cpuFreqElement) {
+                cpuFreqElement.textContent = Math.round(data.metrics.cpu_freq) + ' MHz';
+            }
+        }
+        
+        // Actualizar temperatura de CPU si está disponible
+        if (data.metrics.cpu_temp) {
+            const tempValueElement = document.querySelector('.temperature-value');
+            const tempIconElement = document.querySelector('.temperature-icon i');
+            
+            if (tempValueElement && tempIconElement) {
+                tempValueElement.textContent = data.metrics.cpu_temp.toFixed(1) + '°C';
+                
+                // Actualizar icono según temperatura
+                tempIconElement.className = '';
+                if (data.metrics.cpu_temp < 50) {
+                    tempIconElement.className = 'fas fa-thermometer-quarter cold';
+                } else if (data.metrics.cpu_temp < 70) {
+                    tempIconElement.className = 'fas fa-thermometer-half normal-temp';
+                } else if (data.metrics.cpu_temp < 85) {
+                    tempIconElement.className = 'fas fa-thermometer-three-quarters warm';
+                } else {
+                    tempIconElement.className = 'fas fa-thermometer-full hot';
+                }
+            }
+        }
+        
+        // Actualizar Memoria
+        const memoryBar = document.querySelector('.memory-bar');
+        const memoryValue = memoryBar.nextElementSibling;
+        const memoryPercent = (data.metrics.memory_used / data.metrics.memory_total * 100).toFixed(0);
+        memoryBar.style.width = memoryPercent + '%';
+        memoryValue.textContent = formatBytes(data.metrics.memory_used) + ' / ' + 
+            formatBytes(data.metrics.memory_total);
+        
+        // Actualizar buffers y caché si están disponibles
+        if (data.metrics.memory_buffers) {
+            const buffersElement = document.querySelector('.metric-label:contains("Buffers")').nextElementSibling;
+            if (buffersElement) {
+                buffersElement.textContent = formatBytes(data.metrics.memory_buffers);
+            }
+        }
+        
+        if (data.metrics.memory_cached) {
+            const cacheElement = document.querySelector('.metric-label:contains("Caché")').nextElementSibling;
+            if (cacheElement) {
+                cacheElement.textContent = formatBytes(data.metrics.memory_cached);
+            }
+        }
+        
+        // Actualizar estado de alerta Memoria
+        const memoryCard = document.getElementById('memory-card');
+        const memoryBadge = memoryCard.querySelector('.alert-badge');
+        memoryBadge.className = 'alert-badge alert-' + data.status.memory;
+        memoryBadge.textContent = data.status.memory.toUpperCase();
+        
+        // Actualizar Red
+        document.getElementById('bytes-sent').textContent = formatBytes(data.network_info.bytes_sent);
+        document.getElementById('bytes-recv').textContent = formatBytes(data.network_info.bytes_recv);
+        document.getElementById('bytes-sent-speed').textContent = formatBytes(data.network_info.bytes_sent_speed) + '/s';
+        document.getElementById('bytes-recv-speed').textContent = formatBytes(data.network_info.bytes_recv_speed) + '/s';
+
+        const diskBar = document.querySelector('.disk-bar');
+        if (diskBar) {
+            const diskValue = diskBar.nextElementSibling;
+            diskBar.style.width = data.metrics.disk_percent + '%';
+            diskValue.textContent = formatBytes(data.metrics.disk_used) + ' / ' + 
+                formatBytes(data.metrics.disk_total) + ' (' + data.metrics.disk_percent + '%)';
+    
+    // Actualizar espacio libre
+        const diskFreeElement = document.querySelector('.metric-label:contains("Espacio Libre")').nextElementSibling;
+        if (diskFreeElement) {
+            diskFreeElement.textContent = formatBytes(data.metrics.disk_free);
+        }
+    
+    // Actualizar estado de alerta de disco
+        const diskCard = document.getElementById('disk-card');
+        const diskBadge = diskCard.querySelector('.alert-badge');
+        diskBadge.className = 'alert-badge alert-' + data.status.disk;
+        diskBadge.textContent = data.status.disk.toUpperCase();
+    }   
+
+// Actualizar timestamp
+    document.getElementById('last-updated').textContent = 'Última actualización: ' + data.timestamp;
 </script>
 {% endblock %}

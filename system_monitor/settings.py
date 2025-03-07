@@ -142,6 +142,8 @@ MONITORING_THRESHOLDS = {
     'cpu_critical': 90,  # Porcentaje de CPU para alerta crítica
     'memory_warning': 70,  # Porcentaje de memoria para advertencia
     'memory_critical': 85,  # Porcentaje de memoria para alerta crítica
+    'disk_warning': 75,  # Porcentaje de disco para advertencia
+    'disk_critical': 90,  # Porcentaje de disco para alerta crítica
 }
 
 LOGIN_URL = 'login'

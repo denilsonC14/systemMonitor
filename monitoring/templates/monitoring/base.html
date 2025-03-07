@@ -280,6 +280,7 @@
             <a href="{% url 'test_metrics' %}">Métricas Básicas</a>
             <a href="{% url 'network_metrics' %}">Detalles de Red</a>
             <a href="{% url 'process_list' %}">Lista de Procesos</a>
+            <a href="{% url 'disk_metrics' %}">Almacenamiento</a>
             {% if user.is_staff %}
                 <a href="{% url 'admin:index' %}">Administración</a>
             {% endif %}

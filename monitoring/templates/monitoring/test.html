@@ -64,6 +64,39 @@
                 <div>{{ metrics.cpu_usage }}%</div>
             </div>
         </div>
+        
+        <!-- Frecuencia de CPU -->
+        {% if metrics.cpu_freq %}
+        <div class="metric">
+            <div class="metric-label">Frecuencia:</div>
+            <div class="metric-value">{{ metrics.cpu_freq|floatformat:0 }} MHz</div>
+        </div>
+        {% endif %}
+        
+        <!-- Temperatura de CPU -->
+        {% if metrics.cpu_temp %}
+        <div class="metric">
+            <div class="metric-label">Temperatura:</div>
+            <div class="metric-value">
+                <div class="temperature-display">
+                    <div class="temperature-icon">
+                        {% if metrics.cpu_temp < 50 %}
+                            <i class="fas fa-thermometer-quarter cold"></i>
+                        {% elif metrics.cpu_temp < 70 %}
+                            <i class="fas fa-thermometer-half normal-temp"></i>
+                        {% elif metrics.cpu_temp < 85 %}
+                            <i class="fas fa-thermometer-three-quarters warm"></i>
+                        {% else %}
+                            <i class="fas fa-thermometer-full hot"></i>
+                        {% endif %}
+                    </div>
+                    <div class="temperature-value">
+                        {{ metrics.cpu_temp|floatformat:1 }}°C
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -91,6 +124,49 @@
             <div class="metric-label">Memoria Libre:</div>
             <div class="metric-value">{{ metrics.memory_free|filesizeformat }} ({% widthratio metrics.memory_free metrics.memory_total 100 %}%)</div>
         </div>
+        
+        <!-- Buffers y Caché -->
+        <div class="metric-section">
+            <div class="metric-section-title">Detalles de Memoria</div>
+            
+            {% if metrics.memory_buffers %}
+            <div class="metric">
+                <div class="metric-label">Buffers:</div>
+                <div class="metric-value">{{ metrics.memory_buffers|filesizeformat }}</div>
+            </div>
+            {% endif %}
+            
+            {% if metrics.memory_cached %}
+            <div class="metric">
+                <div class="metric-label">Caché:</div>
+                <div class="metric-value">{{ metrics.memory_cached|filesizeformat }}</div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Información de Swap -->
+        {% if metrics.swap_total %}
+        <div class="metric-section">
+            <div class="metric-section-title">Memoria de Intercambio (Swap)</div>
+            
+            <div class="metric">
+                <div class="metric-label">Swap Total:</div>
+                <div class="metric-value">{{ metrics.swap_total|filesizeformat }}</div>
+            </div>
+            
+            <div class="metric">
+                <div class="metric-label">Swap Usado:</div>
+                <div class="metric-value">
+                    <div class="progress">
+                        {% with swap_percent=metrics.swap_used|floatformat:0 %}
+                        <div class="progress-bar" style="width: {% widthratio metrics.swap_used metrics.swap_total 100 %}%; background-color: #9b59b6;"></div>
+                        {% endwith %}
+                    </div>
+                    <div>{{ metrics.swap_used|filesizeformat }} ({% widthratio metrics.swap_used metrics.swap_total 100 %}%)</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -100,43 +176,39 @@
     document.addEventListener('realtimeDataUpdate', function(event) {
         const data = event.detail;
         
-        // Actualizar CPU con alertas
-        const cpuBar = document.querySelector('.cpu-bar');
-        const cpuContainer = cpuBar.closest('.metric-container');
-        
-        cpuBar.style.width = data.metrics.cpu_usage + '%';
-        cpuBar.nextElementSibling.textContent = data.metrics.cpu_usage + '%';
-        
-        // Quitar clases de alerta anteriores
-        cpuBar.classList.remove('alert-warning', 'alert-critical');
-        cpuContainer.classList.remove('alert-warning', 'alert-critical');
-        
-        // Añadir clases según el estado
-        if (data.status.cpu === 'warning') {
-            cpuBar.classList.add('alert-warning');
-            cpuContainer.classList.add('alert-warning');
-        } else if (data.status.cpu === 'critical') {
-            cpuBar.classList.add('alert-critical');
-            cpuContainer.classList.add('alert-critical');
-        }
-        
-        // Actualizar Memoria con alertas (similar a CPU)
-        const memoryBar = document.querySelector('.memory-bar');
-        const memoryContainer = memoryBar.closest('.metric-container');
-        
-        // Código similar para memoria...
-        
-        // Actualizar timestamp
-        updateLastUpdated(data.timestamp);
-    });
-    document.addEventListener('realtimeDataUpdate', function(event) {
-        const data = event.detail;
-        
         // Actualizar CPU
         const cpuBar = document.querySelector('.cpu-bar');
         const cpuValue = cpuBar.nextElementSibling;
         cpuBar.style.width = data.metrics.cpu_usage + '%';
         cpuValue.textContent = data.metrics.cpu_usage + '%';
+        
+        // Actualizar frecuencia de CPU si está disponible
+        if (data.metrics.cpu_freq) {
+            const cpuFreqElement = $(".metric-label:contains('Frecuencia')").next();
+            cpuFreqElement.text(Math.round(data.metrics.cpu_freq) + ' MHz');
+        }
+        
+        // Actualizar temperatura de CPU si está disponible
+        if (data.metrics.cpu_temp) {
+            const tempValueElement = document.querySelector('.temperature-value');
+            const tempIconElement = document.querySelector('.temperature-icon i');
+            
+            if (tempValueElement && tempIconElement) {
+                tempValueElement.textContent = data.metrics.cpu_temp.toFixed(1) + '°C';
+                
+                // Actualizar icono según temperatura
+                tempIconElement.className = '';
+                if (data.metrics.cpu_temp < 50) {
+                    tempIconElement.className = 'fas fa-thermometer-quarter cold';
+                } else if (data.metrics.cpu_temp < 70) {
+                    tempIconElement.className = 'fas fa-thermometer-half normal-temp';
+                } else if (data.metrics.cpu_temp < 85) {
+                    tempIconElement.className = 'fas fa-thermometer-three-quarters warm';
+                } else {
+                    tempIconElement.className = 'fas fa-thermometer-full hot';
+                }
+            }
+        }
         
         // Actualizar Memoria
         const memoryBar = document.querySelector('.memory-bar');
@@ -146,35 +218,64 @@
         memoryValue.textContent = formatBytes(data.metrics.memory_used) + 
             ' (' + memoryPercent + '%)';
         
-        // Actualizar memoria libre (usando jQuery para el selector :contains)
-        const memoryFree = $(".metric-label:contains('Memoria Libre')").next();
-        const memoryFreePercent = (data.metrics.memory_free / data.metrics.memory_total * 100).toFixed(0);
-        memoryFree.text(formatBytes(data.metrics.memory_free) + 
-            ' (' + memoryFreePercent + '%)');
-        
-        // Añadir indicador de última actualización
-        updateLastUpdated(data.timestamp);
-    });
-    
-    // Función para formatear bytes
-    function formatBytes(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-    
-    // Función para actualizar timestamp
-    function updateLastUpdated(timestamp) {
-        let lastUpdatedElement = document.getElementById('last-updated');
-        if (!lastUpdatedElement) {
-            lastUpdatedElement = document.createElement('div');
-            lastUpdatedElement.id = 'last-updated';
-            lastUpdatedElement.className = 'last-updated';
-            document.querySelector('.card').appendChild(lastUpdatedElement);
-        }
-        lastUpdatedElement.textContent = 'Última actualización: ' + timestamp;
-    }
+                // Actualizar memoria libre
+                const memoryFree = $(".metric-label:contains('Memoria Libre')").next();
+                const memoryFreePercent = (data.metrics.memory_free / data.metrics.memory_total * 100).toFixed(0);
+                memoryFree.text(formatBytes(data.metrics.memory_free) + 
+                    ' (' + memoryFreePercent + '%)');
+                
+                // Actualizar buffers si están disponibles
+                if (data.metrics.memory_buffers) {
+                    const buffersElement = $(".metric-label:contains('Buffers')").next();
+                    if (buffersElement.length) {
+                        buffersElement.text(formatBytes(data.metrics.memory_buffers));
+                    }
+                }
+                
+                // Actualizar caché si está disponible
+                if (data.metrics.memory_cached) {
+                    const cacheElement = $(".metric-label:contains('Caché')").next();
+                    if (cacheElement.length) {
+                        cacheElement.text(formatBytes(data.metrics.memory_cached));
+                    }
+                }
+                
+                // Actualizar swap si está disponible
+                if (data.metrics.swap_total && data.metrics.swap_used) {
+                    const swapBar = $(".progress-bar[style*='background-color: #9b59b6']");
+                    const swapValue = swapBar.parent().next();
+                    const swapPercent = (data.metrics.swap_used / data.metrics.swap_total * 100).toFixed(0);
+                    
+                    if (swapBar.length) {
+                        swapBar.css('width', swapPercent + '%');
+                        swapValue.text(formatBytes(data.metrics.swap_used) + ' (' + swapPercent + '%)');
+                    }
+                }
+                
+                // Añadir indicador de última actualización
+                updateLastUpdated(data.timestamp);
+            });
+            
+            // Función para formatear bytes
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            // Función para actualizar timestamp
+            function updateLastUpdated(timestamp) {
+                let lastUpdatedElement = document.getElementById('last-updated');
+                if (!lastUpdatedElement) {
+                    lastUpdatedElement = document.createElement('div');
+                    lastUpdatedElement.id = 'last-updated';
+                    lastUpdatedElement.className = 'last-updated';
+                    document.querySelector('.card').appendChild(lastUpdatedElement);
+                }
+                lastUpdatedElement.textContent = 'Última actualización: ' + timestamp;
+            }
 </script>
 {% endblock %}
+        
